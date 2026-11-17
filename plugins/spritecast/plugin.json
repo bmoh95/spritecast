@@ -1,0 +1,35 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "spritecast",
+  "version": "0.17.0",
+  "description": "Create camera-locked isometric game sprites, animations, pixel art, and depth-masked seated character composites.",
+  "author": {
+    "name": "Sunghwan Baek"
+  },
+  "license": "MIT",
+  "keywords": [
+    "godot",
+    "gamedev",
+    "isometric",
+    "pixel-art",
+    "sprites",
+    "image-generation"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "SpriteCast",
+        "shortDescription": "Create consistent isometric game art",
+        "longDescription": "Generate guided isometric props, characters, animations, pixel art, and layered Godot seating composites with Codex image generation.",
+        "developerName": "Sunghwan Baek",
+        "category": "Productivity",
+        "brandColor": "#1785A8",
+        "defaultPrompt": [
+          "Use SpriteCast to create an isometric office chair and desk for my Godot game.",
+          "Use SpriteCast to make this character walk in four isometric directions.",
+          "Use SpriteCast to seat this character on the chair with the front armrest occlusion handled correctly."
+        ]
+      }
+    }
+  }
+}

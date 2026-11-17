@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent)); import browser as BROW
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
+import codex_image as CODEX_IMAGE
 
 HERE = Path(__file__).resolve().parent
 STYLES = HERE.parent / 'styles'
@@ -292,25 +293,37 @@ def draw(spec, d, args):
     vs = views(spec, d); todo = [(t, vd) for t, vd in vs if args.again or not (vd / 'drawn.png').exists()]
     if args.only: todo = [(t, vd) for t, vd in todo if vd.name in args.only.split(',') or str(t) in args.only.split(',')]
     if not todo: return print('draw: every view is drawn already (--again to draw anew)')
+    backend = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower()
+    if backend not in ('api', 'codex'):
+        sys.exit('draw: SPRITECAST_IMAGE_BACKEND must be api or codex')
     model = os.environ.get('SPRITECAST_MODEL', 'gpt-image-2.5-sunburst'); quality = os.environ.get('SPRITECAST_QUALITY', 'high')
-    out_tok = {'low': 196, 'medium': 439, 'high': 1756}.get(quality, 1756)
-    est = sum((2600 if vd == vs[0][1] else 3900) * PRICE['image_in'] + 450 * PRICE['text_in'] + out_tok * PRICE['image_out'] for _, vd in todo)
-    print(f'draw: {len(todo)} view(s), {model}, quality {quality}, about ${est:.2f}')
-    if not args.yes: return print('draw: not spent — run again with --yes')
-    key = os.environ.get('OPENAI_API_KEY')
-    if not key: sys.exit('draw: set OPENAI_API_KEY')
+    key = None
+    if backend == 'codex':
+        print(f'draw: {len(todo)} view(s), Codex built-in image_gen; no OPENAI_API_KEY or --yes needed')
+    else:
+        out_tok = {'low': 196, 'medium': 439, 'high': 1756}.get(quality, 1756)
+        est = sum((2600 if vd == vs[0][1] else 3900) * PRICE['image_in'] + 450 * PRICE['text_in'] + out_tok * PRICE['image_out'] for _, vd in todo)
+        print(f'draw: {len(todo)} view(s), {model}, quality {quality}, about ${est:.2f}')
+        if not args.yes: return print('draw: not spent — run again with --yes')
+        key = os.environ.get('OPENAI_API_KEY')
+        if not key: sys.exit('draw: set OPENAI_API_KEY')
     for t, vd in todo:                                                         # the first view first: the others follow its drawing
         ref = vs[0][1] / 'drawn.png' if vd != vs[0][1] else None
         if ref is not None and not ref.exists(): sys.exit('draw: the first view has no drawing yet')
-        draw_one(spec, vd, args, model, quality, key, ref)
+        draw_one(spec, vd, args, model, quality, key, ref, backend)
 
 
-def draw_one(spec, d, args, model, quality, key, ref):
+def draw_one(spec, d, args, model, quality, key, ref, backend='api'):
     out = d / 'drawn.png'
     imgs = [d / 'input.png', style_of(spec, args.spec)] + ([ref] if ref else [])
     size = '%dx%d' % Image.open(imgs[0]).size
     yaw = json.loads((d / 'render.json').read_text()).get('camera', {}).get('yaw', 45)
-    fields = {'model': model, 'prompt': prompt(spec, first=bool(ref), yaw=yaw), 'size': size, 'quality': quality, 'background': 'opaque', 'output_format': 'png', 'n': '1'}
+    words = prompt(spec, first=bool(ref), yaw=yaw)
+    if backend == 'codex':
+        width, height = map(int, size.split('x'))
+        CODEX_IMAGE.write_request(words, imgs, out, (width, height), (255, 0, 255, 255))
+        return
+    fields = {'model': model, 'prompt': words, 'size': size, 'quality': quality, 'background': 'opaque', 'output_format': 'png', 'n': '1'}
     b = uuid.uuid4().hex; body = b''
     for k, v in fields.items(): body += f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
     for p in imgs:

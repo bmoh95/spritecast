@@ -28,7 +28,7 @@ What it does:  render -> pixelized guide (4 frames a sheet) -> GPT redraws it as
                -> strips + preview.gif
 Files: <character>/pixel/ (guides, prompts, GPT's answers - kept, so a second run pays only for what is missing)
        <character>/out-pixel<px>/ (<clip>-<facing>.png strips, preview.gif, pixel.json)"""
-import argparse, json, sys, time
+import argparse, json, os, sys, time
 if __name__ != '__main__': raise ImportError('pixelart.py is a command, not a module: it BUILDS on import (a script that imported it for its reader rebuilt a character with other options). The reader is pixelgrid.py.')
 from pathlib import Path
 import numpy as np
@@ -281,8 +281,9 @@ def main():
             sheets.append((c, dr, g, idx))
             if A.again == name: (W / f'{name}-{H}-out.png').unlink(missing_ok=True)
             if not (W / f'{name}-{H}-out.png').exists(): paid.append((name, '1536x1024'))
-    print(f'{len(sheets)} sheets; to draw: {len(paid)}' + (f' (about ${len(paid) * PRICE:.2f}): ' + ', '.join(n for n, _ in paid) if paid else ''))
-    if paid and not A.yes:
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    print(f'{len(sheets)} sheets; to draw: {len(paid)}' + (f' (about ${len(paid) * PRICE:.2f}): ' + ', '.join(n for n, _ in paid) if paid and not codex else ''))
+    if paid and not A.yes and not codex:
         print('nothing spent - run again with --yes')
         if not A.partial: return
         sheets = [x for x in sheets if (W / f'{x[0]}-{x[1]}-{x[2]}-{H}-out.png').exists()]; paid = []
@@ -290,6 +291,9 @@ def main():
     for name, size in paid:
         first = W / f'{name.rsplit("-", 1)[0]}-0-{H}-out.png'      # a later sheet is shown the animation's first one (two sheets drawn apart came out with different coats)
         t0_ = time.time(); spent += CP.gpt((W / f'{name}-{H}-prompt.txt').read_text(), [W / f'{name}-{H}-in.png', turn] + ([first] if not name.endswith('-0') and first.exists() else []), W / f'{name}-{H}-out.png', size); TIMES['draw'][name] = round(time.time() - t0_, 1); print(f'  drawn: {name} ({TIMES["draw"][name]:.0f} s)', flush=True)
+    if codex and any(not (W / f'{name}-{H}-out.png').exists() for name, _ in paid):
+        print('Codex requests staged; import each generated sheet to its requested output path, then run pixelart.py again')
+        return
     bodies = {}
     for c, dr, g, idx in sheets:
         r = read_body(c, dr, g, idx)

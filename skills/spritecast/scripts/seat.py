@@ -141,11 +141,11 @@ def run(prop_spec, char_spec, view=None, at=None, facing=None, height=None, sink
     dist = lambda z: yy / s / math.tan(th) + z / math.sin(th)                               # toward the camera (m)
     # a chair pixel past the guide's own outline (the drawing plumper) takes the nearest guide pixel's height
     chair_z = np.where(chair_3d, chair_z, fill_nearest(np.where(chair_3d, chair_z, 0), chair_3d))
-    front = chair_a & body_a & (dist(chair_z) > dist(body_z) + 0.04)
-    front = ndimage.binary_opening(front, iterations=2)
-    lab, n = ndimage.label(front)                                                           # no crumbs: the drawing and the 3D differ a little
+    front = chair_a & body_a & (dist(chair_z) > dist(body_z) + 0.012)
+    front = ndimage.binary_closing(front, structure=np.ones((3, 3), dtype=bool), iterations=1)
+    lab, n = ndimage.label(front)                                                           # keep narrow armrests; discard only tiny depth-noise islands
     if n:
-        sz = ndimage.sum(front, lab, range(1, n + 1)); front = np.isin(lab, 1 + np.nonzero(sz >= max(60, 0.002 * body_a.sum()))[0])
+        sz = ndimage.sum(front, lab, range(1, n + 1)); front = np.isin(lab, 1 + np.nonzero(sz >= max(8, 0.00025 * body_a.sum()))[0])
     front = ndimage.binary_fill_holes(front)
     front = ndimage.binary_dilation(front, iterations=2) & chair_a                          # (a little over the sitter's edge: no seam)
     # out: the front piece on the sprite's own canvas, where to draw the sitter, a preview

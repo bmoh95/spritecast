@@ -16,7 +16,7 @@ screen on the wrong face in one view of four and its top another colour in two. 
 the image model is shown the same view at full size beside the pixelized one to read it by: a ramen cart came out right from all four.
 
 Never under 64 squares: a prop that would be smaller at this scale is drawn 64 tall and made smaller afterwards (as pixelart.py does)."""
-import argparse, json, sys, time
+import argparse, json, os, sys, time
 from pathlib import Path
 import numpy as np
 from PIL import Image
@@ -120,15 +120,20 @@ def main():
     for n, v in enumerate(vs):
         w, h, z = guide(spec, d, views, v, A.ppm, first=n > 0); mt = json.loads((vdir(d, views, v) / 'pixel/meta.json').read_text())
         print(f"  view {v}: {w} x {h} squares of {z} px" + (f" (asked {mt['asked_px']} px: under 64 - drawn 64 tall, made smaller afterwards)" if mt['asked_px'] < 64 else ''))
-    print(f'{len(vs)} view(s); to draw: {len(todo)}' + (f' (about ${len(todo) * PRICE:.2f}): views {todo}' if todo else ''))
-    if todo and not A.yes: print('nothing spent - run again with --yes'); todo = []
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    print(f'{len(vs)} view(s); to draw: {len(todo)}' + (f' (Codex image_gen): views {todo}' if todo and codex else f' (about ${len(todo) * PRICE:.2f}): views {todo}' if todo else ''))
+    if todo and not A.yes and not codex: print('nothing spent - run again with --yes'); todo = []
     if todo:
         import charpipe as CP
         for v in vs:          # (in order: the first view's answer is shown to the others)
             o = vdir(d, views, v) / 'pixel'
             if (o / 'out.png').exists(): continue
             mt = json.loads((o / 'meta.json').read_text()); first = vdir(d, views, vs[0]) / 'pixel/out.png'; imgs = [o / 'in.png'] + ([Path(mt['look'])] if mt.get('look') else []) + ([first] if v != vs[0] and first.exists() else [])
-            t = time.time(); c = CP.gpt((o / 'prompt.txt').read_text(), imgs, o / 'out.png', mt['size']); print(f'  drawn: view {v} (${c:.3f}, {time.time() - t:.0f} s)', flush=True)
+            t = time.time(); c = CP.gpt((o / 'prompt.txt').read_text(), imgs, o / 'out.png', mt['size'])
+            print(f'  drawn: view {v} (Codex image_gen, {time.time() - t:.0f} s)' if codex else f'  drawn: view {v} (${c:.3f}, {time.time() - t:.0f} s)', flush=True)
+        if codex and any(not (vdir(d, views, v) / 'pixel/out.png').exists() for v in todo):
+            print('Codex requests staged; import generated images to their requested output paths, then run proppixel.py again')
+            return
     out = d / 'out-pixel'; out.mkdir(exist_ok=True); done = {}; cells = []
     for v in vs:
         o = vdir(d, views, v) / 'pixel'

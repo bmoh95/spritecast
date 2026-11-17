@@ -45,6 +45,7 @@ from scipy import ndimage as ndi
 from PIL import Image
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE)); import charlib as CL   # noqa: E402
+import codex_image as CODEX_IMAGE
 import touchup as TU   # noqa: E402
 SPEC_PATH = None
 DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west']
@@ -131,6 +132,10 @@ class Refused(Exception):
 
 
 def gpt(prompt, imgs, out, size):
+    if os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex':
+        width, height = map(int, size.split('x'))
+        CODEX_IMAGE.write_request(prompt, imgs, out, (width, height), (255, 255, 255, 255))
+        return 0.0
     key = need('OPENAI_API_KEY'); model = os.environ.get('SPRITECAST_MODEL', 'gpt-image-2.5-sunburst')
     fields = {'model': model, 'prompt': prompt, 'size': size, 'quality': os.environ.get('SPRITECAST_QUALITY', 'high'), 'background': 'opaque',
               'output_format': 'png', 'n': '1'}
@@ -203,10 +208,16 @@ def cut_views(d):
 def turnaround(s, d, args):
     out = d / 'turnaround/turn.png'
     if out.exists() and not args.again: cut_views(d); return print(f'turnaround: {out} is there (--again to draw anew); views cut')
-    if not gate(args, 'turnaround: one OpenAI picture, about $0.09'): return
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    if not codex and not gate(args, 'turnaround: one OpenAI picture, about $0.09'): return
     imgs = [s['design']] + ([s['face']] if s.get('face') else [])
     cost = gpt((TURN_ANIMAL if s['kind'] == 'animal' else TURN).format(face='. Image 2 is a close-up of the face to reproduce exactly' if s.get('face') else '', desc=s['description']), imgs, out, '1536x1024')
-    cut_views(d); print(f'turnaround: {out} (${cost:.3f}) - check it (both sides the same, nothing hanging over the arms) before `model`')
+    if codex and not out.exists():
+        print('turnaround: Codex request staged; import the generated image to turnaround/turn.png, then run this step again')
+        return
+    cut_views(d)
+    print(f'turnaround: {out} - check it (both sides the same, nothing hanging over the arms) before `model`' if codex
+          else f'turnaround: {out} (${cost:.3f}) - check it (both sides the same, nothing hanging over the arms) before `model`')
 
 
 # --- Meshy ----------------------------------------------------------------------------------------------------------------------------
@@ -609,10 +620,18 @@ def frame_step(s, d, args):
     name, dr, k = args.only, args.facing, (args.frame or 0) - 1
     if name not in s['actions'] or dr not in DIRS or not 0 <= k < s['actions'][name]['frames']: sys.exit('frame: --only <an action>, --facing <one of the 8>, --frame <1..its frames>')
     if not (d / f'draw/{name}-{dr}-drawn-{k // 4}.png').exists(): sys.exit(f'frame: draw {name} {dr} first (its sheet is the style the frame is drawn to)')
-    if not gate(args, f'frame: {name} {dr} frame {k + 1} drawn alone, about $0.08 (OpenAI)'): return
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    if not codex and not gate(args, f'frame: {name} {dr} frame {k + 1} drawn alone, about $0.08 (OpenAI)'): return
     one = d / f'draw/{name}-{dr}-single-{k}.png'
-    if one.exists(): shutil.copy2(one, one.with_suffix('.before.png'))
-    print(f'frame: ${draw_frame(s, d, name, dr, k):.2f}'); rep_ = {}; finish_action(s, d, name, rep_); print(rep_.get(f'{name} {dr}'))
+    if codex and one.exists():
+        pass
+    else:
+        if one.exists(): shutil.copy2(one, one.with_suffix('.before.png'))
+        print(f'frame: ${draw_frame(s, d, name, dr, k):.2f}')
+        if codex and not one.exists():
+            print(f'frame: Codex request staged; import the generated image to {one}, then run this step again')
+            return
+    rep_ = {}; finish_action(s, d, name, rep_); print(rep_.get(f'{name} {dr}'))
 
 
 def loop_gif(s, d, names, dr, scale=0.42):
@@ -715,7 +734,8 @@ def sit_draw(s, d, args):
     if not (d / 'draw/walk-south-drawn-0.png').exists(): sys.exit('sit: draw the walk first - the seated views follow its drawing')
     groups = (['south', 'south-east', 'south-west', 'east'], ['west', 'north-east', 'north-west', 'north'])
     todo = [g for g in (0, 1) if args.again or not (d / f'draw/sit-drawn-{g}.png').exists()]
-    if todo and not gate(args, f'sit: {len(todo)} sheets of 4 seated views, about ${len(todo) * 0.11:.2f} (OpenAI)'): return
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    if todo and not codex and not gate(args, f'sit: {len(todo)} sheets of 4 seated views, about ${len(todo) * 0.11:.2f} (OpenAI)'): return
     bb = union([d / f'render/sit-{x}.png' for x in DIRS]); cost = 0; who = 'person'
     for g, ds in enumerate(groups):
         rs = d / f'draw/sit-renders-{g}.png'; sheet_of([d / f'render/sit-{x}.png' for x in ds], bb, rs); out = d / f'draw/sit-drawn-{g}.png'
@@ -733,7 +753,10 @@ def sit_draw(s, d, args):
         (d / f'draw/sit-prompt-{g}.txt').write_text(P)
         try: cost += gpt(P, [rs] + imgs, out, '1536x1024')
         except Refused: print(f'sit: {out.name} turned down by OpenAI\'s safety check three times - left as it was; run it again later')
-    print(f'sit: drawn (${cost:.2f})'); sit_finish(s, d)
+    if codex and any(not (d / f'draw/sit-drawn-{g}.png').exists() for g in todo):
+        print('sit: Codex requests staged; import generated sheets to draw/sit-drawn-*.png, then run `sit --draw` again')
+        return
+    print('sit: drawn with Codex image_gen' if codex else f'sit: drawn (${cost:.2f})'); sit_finish(s, d)
 
 
 def sit_finish(s, d):
@@ -762,7 +785,8 @@ def draw(s, d, args):
     n = sum(todo(f'walk-{x}-drawn-{k}.png') for x in walks for k in range(-(-s['frames'] // 4))) + (sum(todo(f'idle-drawn-{k}.png') for k in (0, 1)) if 'idle' in only else 0)
     n += sum(todo(f'{nm}-{x}-drawn-{k}.png') for nm, a in s['actions'].items() if (nm in only or not args.only) and (d / f'render/{nm}-south-0.png').exists()
              for x in action_dirs(s) for k in range(-(-a['frames'] // 4)))
-    if n and not gate(args, f'draw: {n} sheets of 4 frames, about ${n * 0.11:.2f} (OpenAI)'): return
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    if n and not codex and not gate(args, f'draw: {n} sheets of 4 frames, about ${n * 0.11:.2f} (OpenAI)'): return
     cost = 0
     if 'south' in walks: cost += draw_walk(s, d, 'south', args.again); walks.remove('south')   # the front first: the rest follow it
     with ThreadPoolExecutor(6) as ex: cost += sum(ex.map(lambda x: draw_walk(s, d, x, args.again), walks))
@@ -771,7 +795,7 @@ def draw(s, d, args):
         if not (d / f'render/{name}-south-0.png').exists(): print(f'draw: {name} has no renders - `render` (or `rig --again` for its clip) first'); continue
         dirs = action_dirs(s); cost += draw_walk(s, d, 'south', args.again, name=name) if 'south' in dirs else 0
         with ThreadPoolExecutor(6) as ex: cost += sum(ex.map(lambda x: draw_walk(s, d, x, args.again, name=name), [x for x in dirs if x != 'south']))
-    print(f'draw: done (${cost:.2f})')
+    print('draw: done with Codex image_gen' if codex else f'draw: done (${cost:.2f})')
     if all_drawn(s, d): finish(s, d); preview(s, d)        # the rest is free: straight on to the strips and the preview
     else: print('draw: some facings are not drawn yet - draw them, then `finish`')
 
@@ -1186,7 +1210,8 @@ def redraw_actions(s, d, args):
     if looked: print('redraw: a little off the render (left as drawn - look at them; `redraw --low` draws them again too): ' + ', '.join(looked))
     if not todo: return 0
     print('redraw: ' + ', '.join(f'{n} {dr} {g * 4 + 1}-{g * 4 + 4} (lowest {lo:.2f})' for n, dr, g, _, lo in todo))
-    if not gate(args, f'redraw: {len(todo)} action sheets, about ${len(todo) * 0.11:.2f} (OpenAI)'): return 0
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    if not codex and not gate(args, f'redraw: {len(todo)} action sheets, about ${len(todo) * 0.11:.2f} (OpenAI)'): return 0
     for n, dr, g, _, _ in todo:
         f = d / f'draw/{n}-{dr}-drawn-{g}.png'; f.replace(f.with_suffix('.prev.png'))
         draw_walk(s, d, dr, False, [g], name=n)
@@ -1234,7 +1259,8 @@ def redraw(s, d, args):
     for p in pairs: print(f'redraw: {p} still low after two tries - its pair {PAIR[p]} ' + (f'drawn ({len(pair_sheets[p])} sheets) and ' if pair_sheets[p] else '') + 'the better of the two flipped onto the other')
     if singles: print('redraw: single frames ' + ', '.join(f'{dr} {k + 1} ({v:.2f})' for dr, k, v in singles))
     n = len(sheets) + sum(len(v) for v in pair_sheets.values()) + len(singles)
-    if n and not gate(args, f'redraw: {n} drawings, about ${n * 0.11:.2f} (OpenAI)'): return
+    codex = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower() == 'codex'
+    if n and not codex and not gate(args, f'redraw: {n} drawings, about ${n * 0.11:.2f} (OpenAI)'): return
     before = {}
     for dr, g, lo, mean in sheets:
         f = d / f'draw/walk-{dr}-drawn-{g}.png'; f.replace(f.with_suffix('.prev.png'))

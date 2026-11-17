@@ -2,7 +2,7 @@
 name: spritecast
 description: Make game sprites at their real size and exact camera angle (2:1 or true isometric, 3/4 top-down, front view) in the user's art style - props, furniture and objects, standing figures, characters walking, running, jumping, slashing and throwing in 8 facings (painted, or as pixel art about 96 px tall for arcade games; props as pixel art too, from every side) and seated in 8 facings, seated on the user's own chairs and benches with the chair's front piece in front of them - from a 3D guide an image model redraws; then cut out, fitted to the guide, given a baked shadow and an anchor, and fixed by hand on a local touch-up page. Use when the user asks for an isometric or top-down prop, furniture, object or character sprite, a walk cycle or another animation (run, jump, attack, throw, a Mixamo FBX clip), pixel-art sprites or a sprite sheet of a character, fixing pixel sprites by hand, a seated or sitting character, putting a character on a chair or bench, or fixing a sprite's cut-out, halo or what covers what.
 license: MIT
-compatibility: Claude Code (runs Python, Playwright and a local Chrome/Chromium on the user's machine; calls the OpenAI Images API with the user's own key)
+compatibility: Claude Code and Codex CLI (Python, Playwright and local Chrome/Chromium; Claude can use the Images API, while Codex uses its built-in image_gen tool)
 ---
 
 # SpriteCast: isometric props and characters at true scale
@@ -11,8 +11,18 @@ Image models draw isometric objects at slightly wrong angles and sizes. This ski
 object built from simple blocks at its real size, rendered with an exact 2:1 isometric camera. The model only redraws the guide in the
 art style of a reference picture; the result is laid back onto the guide, so the angle, size and footprint stay exact.
 
-Scripts: `${CLAUDE_SKILL_DIR}/scripts/isoprop.py` (steps `render`, `draw`, `finish`, `preview`). The spec format is in
+Scripts: `${CLAUDE_SKILL_DIR}/scripts/isoprop.py` in Claude Code; in Codex, resolve `scripts/isoprop.py` relative to this skill's directory. The spec format is in
 [reference/spec.md](reference/spec.md); how to build good guides in [reference/tips.md](reference/tips.md) - read both before writing a spec.
+
+## Codex CLI image generation
+
+When this skill runs in Codex CLI, set `SPRITECAST_IMAGE_BACKEND=codex` for every SpriteCast script command that draws an image. This
+stages a `*.codex-request.json` file instead of calling the OpenAI Images API. Read that request, pass its prompt and all listed local
+reference images to Codex's built-in `image_gen` tool, then import the generated file with `scripts/codex_image.py import <request.json>
+<generated-image>`. Rerun the original SpriteCast command to continue finishing the asset. Keep the request's exact view, layout, guide
+alignment and target canvas size. Preserve the flat magenta or white backgrounds requested by the prompt; SpriteCast removes them later.
+Do not use `OPENAI_API_KEY`, `openai images`, or a direct API fallback in Codex mode. This native path does not use an OpenAI API key;
+Tripo and Meshy still need their own keys for 3D model generation.
 
 ## Setup (once)
 1. Run `python3 ${CLAUDE_SKILL_DIR}/scripts/doctor.py` (any Python 3.9+; `python` on Windows). It lists what is there and what each
@@ -20,7 +30,7 @@ Scripts: `${CLAUDE_SKILL_DIR}/scripts/isoprop.py` (steps `render`, `draw`, `fini
    in a line what is missing and run it again with `--fix` (a venv in ~/.cache/spritecast/, the packages, about 10 s). No Chrome or Edge: ask first, then `--fix --browser`
    (Playwright's Chromium, ~150 MB). For characters add `--characters` (the 224 MB cut-out
    model, once). If it says the Python cannot make a venv, pass on its one-line fix.
-2. Keys: `OPENAI_API_KEY` for `draw`, `TRIPO_API_KEY` for characters. They come from the plugin's settings (the user gives them in
+2. Keys: in Claude Code, `OPENAI_API_KEY` for `draw`; in Codex CLI, use the native image-generation workflow above and no OpenAI API key. `TRIPO_API_KEY` is still needed for characters. Claude keys come from the plugin's settings (the user gives them in
    `/plugin` → SpriteCast; a session-start hook hands them to the scripts), else from the environment. Missing: tell the user to put it
    in the plugin's settings and restart Claude Code. Never ask the user to paste a key into the chat, never write it into a file,
    never print it.
@@ -173,9 +183,7 @@ the head): show the user `review.png` (each marked frame beside its guide), not 
 `--redraw` says what drawing those sheets again would cost, `--redraw --yes` does it and keeps the better; `--again <sheet>` redraws one sheet. **Fewer colours or the game's own palette**: `--colours N` / `--palette NAME|FILE` (free, also on `proppixel.py`; `--palette list` shows the 15 that come with the skill; reference/pixel.md). Out: `<clip>-<facing>.png` strips, `shadows/`
 (each frame's 3D shadow), `pixel.json`. **By hand, for what is left** (white between an arm and the body, a face in one frame): `PYTHON pixeledit.py CHAR.json` - a local page
 (a server: run it in the background, give the address) to erase a patch, draw, or copy a good face into another frame; the edits are
-kept and laid on again by every later `pixelart.py` run. Animations a game plays one after another (walk > ready > slash > recover):
-`pixeledit.py CHAR.json --join walk,ready,slash,recover --facing south-east` shows them as one, to be played through and fixed where
-a part jumps - each edit goes to its own animation's frame. **Something thrown** (a snowball): `"hold": {"kind": "snowball", "color": "#bcd6f2",
+kept and laid on again by every later `pixelart.py` run. **Something thrown** (a snowball): `"hold": {"kind": "snowball", "color": "#bcd6f2",
 "final": "#ffffff", "until": "auto"}` on the action - drawn pale blue so that it shows on white paper, white in the end, let go when
 the hand is fastest; the folder then has the thing's own sprites and `release` in `pixel.json` (frame, point, direction, speed), and
 `<clip>-<facing>-flying.gif` to show. **An animation the rig lacks** (a throw): `PYTHON addclip.py CHAR.json Throw.fbx throw` puts a
@@ -191,7 +199,11 @@ Offer it once a character walks. 1) `charpipe.py sit CHAR.json` (free): the rig 
 2) `sit CHAR.json --draw` (~$0.22, after the user agrees; `--yes`): drawn and finished → `out/sit-<facing>.png` and `"sit"` in
 `character.json` (each facing's seat point). 3) On one of their props: `${CLAUDE_SKILL_DIR}/scripts/seat.py PROP.json CHAR.json
 --height <m>` (free; ask the character's height): placed on the seat, the prop's front piece for them worked out from both 3D heights
-→ `<view>/seat/<char>-<facing>/` (front.png, seat.json, preview.png). Show the preview.
+→ `<view>/seat/<char>-<facing>/` (front.png, seat.json, preview.png). Show the preview. The front mask is a separate, transparent piece of
+the chair; it overlays only chair pixels that are in front of the seated body. In Godot, export the layered composite with
+`scripts/seat_export.py <seat.json> --out <project-assets-dir>`: shadow (z=-1), full chair (z=0), seated character (z=1), then the masked
+chair front (z=2). Do not place the full chair above the character with z-index; that hides the sitter instead of producing the correct
+occlusion.
 
 ## Into the user's engine
 When a character is finished and the user names their engine (or asks for Aseprite files), run

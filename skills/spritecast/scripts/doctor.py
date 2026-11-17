@@ -74,12 +74,18 @@ def main():
         mp = charlib.seg_model(fetch=False)
         if not mp and a.fix and a.characters: mp = charlib.seg_model()
     line(bool(mp), 'BiRefNet lite (224 MB)', str(mp) if mp else 'fetched by itself the first time a character is finished (or --fix --characters)')
-    print('keys (the plugin\'s settings: /plugin -> SpriteCast, or the environment; never pasted into the chat):')
-    for k, why in (('OPENAI_API_KEY', 'drawing - props and characters (about $0.07 a prop, ~$2.2 a walking character; ~$1.5 with "mirror": true)'),
-                   ('TRIPO_API_KEY', 'characters: the 3D model and its rig and walk; props: an optional detailed model'),
+    backend = os.environ.get('SPRITECAST_IMAGE_BACKEND', 'api').lower()
+    print('image generation:')
+    if backend == 'codex':
+        line(True, 'Codex image_gen', 'native Codex tool; no OPENAI_API_KEY; the agent must have image_gen available')
+    else:
+        line(bool(os.environ.get('OPENAI_API_KEY')), 'OPENAI_API_KEY', 'API drawing mode for Claude Code or explicit API use')
+    print('keys (set locally or in the selected provider; never pasted into chat):')
+    for k, why in (('TRIPO_API_KEY', 'characters: the 3D model and its rig and walk; props: an optional detailed model'),
                    ('MESHY_API_KEY', 'optional: characters\' 3D model by Meshy instead ("modeler": "meshy")')):
         line(bool(os.environ.get(k)), k, why)
-    print('ready: guides and the free trial' + (' - and drawing' if os.environ.get('OPENAI_API_KEY') else ' (drawing needs OPENAI_API_KEY)') if ok
+    drawing_ready = backend == 'codex' or bool(os.environ.get('OPENAI_API_KEY'))
+    print('ready: guides and the free trial' + (' - and drawing' if drawing_ready else ' (drawing needs OPENAI_API_KEY)') if ok
           else 'not ready: run with --fix')
     print(f'PYTHON={py}')
     sys.exit(0 if ok else 1)

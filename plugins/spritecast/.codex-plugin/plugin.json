@@ -1,0 +1,9 @@
+{
+  "name": "spritecast",
+  "version": "0.17.0",
+  "description": "Create camera-locked isometric game sprites, animations, pixel art, and depth-masked seated character composites.",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "SpriteCast"
+  }
+}

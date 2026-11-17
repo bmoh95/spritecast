@@ -1,7 +1,7 @@
 <h1 align="center"><img src="docs/banner.gif" alt="SpriteCast" width="100%"></h1>
 
 <p align="center"><b>일러스트 한 장이 게임 캐릭터가 돼요.</b><br>
-Claude Code용 아이소메트릭 스프라이트 생성기: 8방향 걷기, 동작, 픽셀아트를<br>
+Claude Code와 Codex CLI용 아이소메트릭 스프라이트 생성기: 8방향 걷기, 동작, 픽셀아트를<br>
 내 게임의 카메라 각도로, 프레임마다 3D 그림자와 함께 만들어요. 옆에 놓을 소품도요.</p>
 
 <p align="center"><a href="https://github.com/Sunghwan0112/spritecast/stargazers"><img src="https://img.shields.io/github/stars/Sunghwan0112/spritecast?style=social" alt="GitHub stars"></a></p>
@@ -29,11 +29,31 @@ claude plugin marketplace add Sunghwan0112/spritecast
 claude plugin install spritecast@spritecast
 ```
 
-그다음엔 부탁만 하면 돼요: *"내 캐릭터야(hero.png). 8방향으로 걷게 해 줘."*
-**키 없이 무료로 해 보려면** Claude에게 *"SpriteCast 체험해 줘"*라고 하세요.
+**Codex CLI:** 이 포크의 로컬 체크아웃에서 저장소 marketplace를 등록하세요.
 
-그림은 이미지 모델(OpenAI, 내 키로)이 그려요. 몸, 움직임, 각도, 그림자는 3D에서 나와요. 그래서 모든 프레임이 같은 사람이고,
-정말로 걸어요.
+```bash
+cd /path/to/spritecast
+codex plugin marketplace add .
+codex plugin marketplace list
+```
+
+저장소 marketplace를 등록하면 SpriteCast를 Codex Plugin으로 쓸 수 있어요. 게임 프로젝트의 `.codex/config.toml`에 아래 설정을
+추가하고(파일이 이미 있으면 기존 내용에 합치세요), 프로젝트를 신뢰한 뒤 새 Codex 세션을 시작하세요.
+
+```toml
+[plugins."spritecast@spritecast-marketplace"]
+enabled = true
+```
+
+포크가 공개되면 `codex plugin marketplace add owner/repo`로 GitHub 저장소를 바로 등록할 수 있어요. 플러그인은 그림 생성에
+Codex 내장 `image_gen`을 사용하므로 `OPENAI_API_KEY`가 필요 없어요.
+3D 모델 생성용 Tripo/Meshy 키는 별도예요.
+
+그다음엔 부탁만 하면 돼요: *"내 캐릭터야(hero.png). 8방향으로 걷게 해 줘."*
+**키 없이 무료로 해 보려면** Claude나 Codex에게 *"SpriteCast 체험해 줘"*라고 하세요.
+
+그림은 이미지 모델이 그려요. Claude Code에서는 내 OpenAI Images API 키를 쓰고, Codex CLI에서는 SpriteCast 플러그인이 Codex 내장
+`image_gen` 도구를 써요. 몸, 움직임, 각도, 그림자는 3D에서 나와요. 그래서 모든 프레임이 같은 사람이고, 정말로 걸어요.
 
 | | 주는 것 | 받는 것 | 비용 |
 |---|---|---|---|
@@ -45,7 +65,10 @@ claude plugin install spritecast@spritecast
 | **소품, 포즈 잡은 NPC** | 설명 | 스프라이트, 그림자, 앵커 | 약 $0.07 (방향 추가마다 $0.08) |
 | **픽셀아트 소품** | 설명 | 모든 방향의 픽셀 스프라이트, 픽셀 캐릭터와 같은 축척 | Tripo 약 20크레딧 + 방향마다 $0.08 |
 
-무료, MIT. 비용은 OpenAI와 Tripo에 직접 내요. 돈이 드는 단계는 비용을 먼저 보여 주고 OK를 기다려요.
+위 달러 비용은 OpenAI Images API 경로 기준이에요. Codex 플러그인은 Codex 내장 `image_gen`을 사용하므로 `OPENAI_API_KEY`가 필요 없어요.
+Tripo/Meshy의 모델·리깅 사용량은 별도예요.
+
+무료, MIT. 위 금액은 API 경로 기준이에요. Tripo/Meshy 모델 생성은 별도 키를 쓰므로 비용이 발생하기 전에 확인해요.
 
 ## 만들 수 있는 것
 
@@ -219,8 +242,7 @@ Tripo의 네발 동물 리그는 걸음이 어색해요(등뼈가 없고, 어깨
   오는 빛이에요. 빠른 방울은 날아가는 방향으로 길게 늘어나고, 일부는 바닥에 떨어져 물결 고리와 함께 튀어요.
 - **내려칠 때만.** 우산을 들어 올리는 동안에는 아무것도 나오지 않아요. 동작에서 빠른 구간을 스스로 찾아요.
 - **이펙트는 몸보다 프레임이 많아요.** 몸은 8번 그리지만 물은 24프레임(한 프레임에 셋), 불은 16프레임(둘)이고 그만큼 빠르게 재생돼요.
-  8프레임이면 한 프레임에선 막이 온전하다가 다음 프레임에선 이미 방울이에요. 이 칸들은 몸 프레임 앞뒤로
-  (⅓프레임 전, 그 순간, ⅓프레임 후) 나뉘어 있어서, 물이 그린 우산을 앞서가지 않고 따라가요.
+  8프레임이면 한 프레임에선 막이 온전하다가 다음 프레임에선 이미 방울이에요.
 - **픽셀 아트에서도** 스프라이트 크기에 맞춰 나와요. 단단한 것은 가장자리가 또렷하고, 김은 반투명으로 남아요.
 
 ![같은 베기의 96 px 픽셀 아트판, 물과 불](docs/effects-pixel.gif)
@@ -241,8 +263,7 @@ Tripo의 네발 동물 리그는 걸음이 어색해요(등뼈가 없고, 어깨
   자세에서 시작해요.
 - **렌더는 무료, 그리기는 다른 동작과 같아요.** 3~4프레임에 시트 한 장, 약 $0.08이에요.
 - **이어서 보기**: `charpipe.py loop hero.json --only walk,ready,slash,recover --facing south-east`(무료)가 마무리된 프레임으로 위와 같은
-  GIF를 만들어요. 튀는 프레임을 다시 그리기 전에 찾을 수 있어요. 픽셀 세트는
-  에디터에서 모든 프레임을 이어 붙인 채로 바로 고칠 수 있어요: `pixeledit.py hero.json --join walk,ready,slash,recover --facing south-east`.
+  GIF를 만들어요. 튀는 프레임을 다시 그리기 전에 찾을 수 있어요.
 - **한 프레임만 틀렸으면 그것만 다시.** `charpipe.py frame hero.json --only slash --facing south-east --frame 5 --yes`(약 $0.08)가 그
   프레임 하나만 다시 그려요. 동작에 `"frame_words"`를 적으면 그 프레임의 렌더가 못 보여주는 것을 이미지 모델에 알려줘요. 위의 5번은
   왼손 주먹이 우산 위에 떠 있게 다섯 번 그려졌는데, 손이 머리 뒤에 대부분 가려져 있다고 알려주니 제대로 나왔어요.
@@ -278,8 +299,6 @@ $PYTHON skills/spritecast/scripts/pixelart.py hero.json --clips walk,throw --yes
   떠요. 남은 흰색을 클릭 한 번으로 지우고(매직 지우개), 연필로 찍고, 색을 바꾸고, 선택한 부분을 옮기고, 잘 나온 얼굴을 다른
   프레임에 복사해요. 팔레트에 원하는 색을 추가할 수 있고, 프레임 자체도 복사(중간 동작을 그려 넣기 - 8프레임을 9프레임으로)·삭제·이동할 수
   있어요. 그림자와 게임용 데이터도 따라 바뀌어요. 고친 건 저장돼서 다음에 다시 만들어도 그대로 얹혀요.
-  이어서 재생되는 동작들은 하나로 열어, 루프 전체를 재생하며 튀는 곳을 고칠 수 있어요:
-  `pixeledit.py hero.json --join walk,ready,slash,recover --facing south-east`.
 
 ![픽셀 에디터: 격자 위의 프레임, 흐리게 보이는 앞 프레임, 도구들, AI와 손이 각각 얼마나 했는지](docs/pixel-edit.png)
 
@@ -291,13 +310,11 @@ $PYTHON skills/spritecast/scripts/pixelart.py hero.json --clips walk,throw --yes
 남은 흰색을 클릭 한 번씩, 40프레임 중 10프레임에서 지웠어요(131픽셀, 스프라이트의 0.15%). 얼굴은 손대지 않았어요. 파이프라인이 만든 그대로예요. 이 숫자는 만들
 때마다 출력돼요.
 
-**더 어려운 세트, 그리고 손이 한 일.** 무기나 우산처럼 들고 있는 물건이 있으면, 그 디테일을 조금 손봐야 해요. 프레임마다
-몇 픽셀씩이고, 지우개와 연필만 쓰면 돼서 그림을 못 그려도 할 수 있는 수준이에요. "두 동작 잇기"의 루프를 픽셀아트로 만든 거예요.
-우산을 들고 걷다가, 자세를 낮추고, 휘두르고, 다시 일어나 걸어요. 네 동작을 이은 23프레임이에요. 손으로 고친 건 들고 있는 우산뿐이에요.
-우산의 끝과 가장자리를 프레임마다 같게 맞췄어요. 캐릭터는 고치지 않았고, 남은 흰 점 몇 개를 지우개로 지운 정도예요. 모두 합쳐
-1,196픽셀(51,442픽셀 중 2.3%)이고, 그림을 그리지 않는 사람이 에디터에서 몇 분 만에 했어요. 빨리 끝난 이유이자 픽셀아트에서 가장 중요한 것: 프레임을 하나씩이 아니라 23프레임을 이어서 재생하며 보는 거예요. 고치는 건
-프레임이 넘어갈 때 픽셀이 크게 바뀌는 부분이 없게 하는 일이에요. 고치지 않은 것: 걷기 두 프레임에서 우산이 3D의
-각도와 길이에서 조금 벗어나 있어요.
+**더 어려운 세트, 그리고 손이 한 일.** 픽셀아트는 어느 정도 손으로 고쳐야 해요. 프레임마다 몇 픽셀씩이고, 지우개와 연필만 쓰면 돼서
+그림을 못 그려도 할 수 있는 수준이에요. "두 동작 잇기"의 루프를 픽셀 아트로 만든 거예요. 우산을 들고 걷다가, 자세를 낮추고, 휘두르고, 다시 일어나 걸어요.
+네 동작을 이은 23프레임이에요. 모든 프레임에 손을 댔어요. 51,442픽셀 중 1,196픽셀(2.3%)이고, 그림을 그리지 않는 사람이 에디터에서
+약 60분 걸렸어요. 남은 흰 점을 지우고, 우산의 끝과 가장자리를 프레임마다 같게 맞췄어요. 고치지 않은 것: 걷기 두 프레임에서 우산이
+3D의 각도와 길이에서 조금 벗어나 있어요.
 
 
 - **에디터가 3D의 위치를 보여줘요** (단축키 `4`). 손에 든 물건은 빨강, 몸의 윤곽은 파랑으로 그리는 프레임 위에 겹쳐요. 우산을 너무
@@ -382,7 +399,7 @@ $PYTHON skills/spritecast/scripts/proppixel.py cart.json --yes        # 방향�
 
 ![비 오는 소녀가 8방향으로 앉은 모습과, 예시 안락의자에 앉아 앞 조각에 가려진 모습](docs/sitting.png)
 
-걷는 캐릭터가 있으면 Claude에게 *"앉혀 줘"*라고 해 보세요. 3D 모델을 앉은 자세(허벅지 수평, 무릎 굽힘, 손은 허벅지 위)로 8방향
+걷는 캐릭터가 있으면 *"앉혀 줘"*라고 해 보세요. 3D 모델을 앉은 자세(허벅지 수평, 무릎 굽힘, 손은 허벅지 위)로 8방향
 렌더하는 건 무료예요. 렌더를 확인한 뒤 서 있는 모습처럼 그려요(시트 2장, 약 $0.22). 의자 없이 앉아 있어서 게임의 의자를 밑에
 두면 돼요. `character.json`에 `sit`이 생겨요. 방향마다 파일, **앉는 점**(의자 좌석에 맞출 점, `anchor`처럼 프레임의 비율), 좌석
 높이, 그림자가 들어 있어요. 소품에 앉히려면 `seat.py`가 좌석 위에 앉히고, 캐릭터를 가리는 **앞 조각**(팔걸이, 장의자 등받이, 벤치
@@ -398,6 +415,15 @@ $PYTHON skills/spritecast/scripts/proppixel.py cart.json --yes        # 방향�
 $PYTHON skills/spritecast/scripts/charpipe.py sit <name>.json            # 무료: 앉은 렌더
 $PYTHON skills/spritecast/scripts/charpipe.py sit <name>.json --draw     # 약 $0.22: 그리고 마무리
 $PYTHON skills/spritecast/scripts/seat.py <prop>.json <name>.json --height 1.3   # 무료: 소품에 앉히고 앞 조각 계산
+```
+
+Godot에서는 의자 전체를 캐릭터 위에 올리지 마세요. 그 방식은 등받이와 뒤쪽 팔걸이까지 인물을 가려요. `seat_export.py`가
+그림자(z=-1), 의자 전체(z=0), 앉은 캐릭터(z=1), 깊이 계산으로 자른 의자 앞부분(z=2)을 각각 레이어로 둔 `.tscn`을 만들어요.
+이렇게 하면 등받이는 캐릭터 뒤에 남고 앞쪽 팔걸이만 몸 앞에 와요. 씬 루트는 의자 바닥 앵커에 배치해 방 안의 Y-sort와 함께
+움직이게 하세요.
+
+```bash
+$PYTHON skills/spritecast/scripts/seat_export.py <view>/seat/<name>-south-east/seat.json --out /path/to/game/assets/seats --project-root /path/to/game --name office_seat_se
 ```
 
 ## 손으로 다듬기
@@ -608,21 +634,35 @@ this.add.sprite(x, y, 'girl-se').setOrigin(0.4926, 0.8839).play('walk-se');
 
 ## 설치
 
-터미널에서:
+Claude Code에서는 터미널에서:
 ```
 claude plugin marketplace add Sunghwan0112/spritecast
 claude plugin install spritecast@spritecast
 ```
 Claude Code 안에서 할 수도 있어요: `/plugin marketplace add Sunghwan0112/spritecast` 다음 `/plugin install spritecast@spritecast`.
 
-**함께 필요한 건** Python 3.9 이상과 브라우저(Chrome, 또는 Edge - 윈도우에는 늘 있어요)뿐이에요. 처음 쓸 때 Claude가 설치 점검
+**Codex CLI에서는** 이 포크의 로컬 저장소 최상위 폴더에서 marketplace를 등록하세요:
+```bash
+cd /path/to/spritecast
+codex plugin marketplace add .
+codex plugin marketplace list
+```
+그다음 게임 프로젝트의 `.codex/config.toml`에 아래 내용을 추가하고(파일이 이미 있으면 기존 내용에 합치세요), 게임 프로젝트를
+신뢰한 뒤 새 Codex 세션을 시작하세요.
+```toml
+[plugins."spritecast@spritecast-marketplace"]
+enabled = true
+```
+포크가 공개되면 `codex plugin marketplace add owner/repo`로 GitHub 저장소를 등록하면 돼요.
+
+**함께 필요한 건** Python 3.9 이상과 브라우저(Chrome, 또는 Edge - 윈도우에는 늘 있어요)뿐이에요. 처음 쓸 때 Claude나 Codex에게 설치 점검
 (`doctor.py --fix`)을 돌려요: `~/.cache/spritecast/`에 전용 가상환경을 만들어 몇 가지 패키지를 넣고(10초쯤), 원래 Python은 건드리지
 않고, 각각 무엇에 쓰는지 알려 줘요. 손으로 설치할 건 없어요.
 
 <details>
 <summary><b>스크립트를 직접 돌릴 때</b></summary>
 
-**스크립트를 직접 돌릴 때.** 보통은 Claude가 대신 돌려요. 이 저장소를 받아서 손으로 돌리려면 `doctor.py`가 마지막 줄에 찍는
+**스크립트를 직접 돌릴 때.** 보통은 Claude나 Codex가 대신 돌려요. 이 저장소를 받아서 손으로 돌리려면 `doctor.py`가 마지막 줄에 찍는
 Python(`PYTHON=...`)을 쓰세요. `--fix` 뒤에는 `~/.cache/spritecast/venv/bin/python`이에요(Windows:
 `%USERPROFILE%\.cache\spritecast\venv\Scripts\python.exe`). 그냥 `python`에는 패키지가 없을 수 있어요(`No module named ...`). 아래
 명령들은 이걸 `$PYTHON`으로 적어요.
@@ -647,16 +687,17 @@ $PYTHON = "$env:USERPROFILE\.cache\spritecast\venv\Scripts\python.exe"
 | numpy, pillow, scipy | 오려내기, 맞추기, 그림자 | 네 (자동 설치) |
 | playwright + Chrome 또는 Edge | 3D 가이드를 내 컴퓨터에서 렌더 (무료) | 네 (자동 설치, 있는 브라우저를 씀) |
 | onnxruntime + 224 MB 모델 | 캐릭터만: 흰 종이 위 흰 신발도 남기는 AI 오려내기 | 캐릭터 (처음 한 번 저절로 받음) |
-| `OPENAI_API_KEY` | 그리기, 소품 하나 약 $0.07 | 그릴 때 |
+| `OPENAI_API_KEY` | OpenAI Images API 그리기, 소품 하나 약 $0.07 | Claude/API 경로 |
+| Codex 내장 `image_gen` | Codex를 통한 그리기, Images API 키 없음 | Codex CLI |
 | `TRIPO_API_KEY` | 캐릭터: 3D 모델, 리그, 걷기 | 걷는 캐릭터 |
 
-**먼저 무료로, 키 없이 해 보기:** Claude에게 *"SpriteCast 체험해 줘"*라고 하면 예시 하나의 가이드를 내 컴퓨터에서 렌더하고, 예시에
+**먼저 무료로, 키 없이 해 보기:** Claude나 Codex에게 *"SpriteCast 체험해 줘"*라고 하면 예시 하나의 가이드를 내 컴퓨터에서 렌더하고, 예시에
 들어 있는 그림으로 마무리해서(`isoprop.py try`) 돈을 쓰기 전에 전 과정을 볼 수 있어요.
 
 <details>
-<summary><b>키: 어디에 넣는지, OpenAI 조직 인증</b></summary>
+<summary><b>Claude Code 키와 OpenAI 조직 인증</b></summary>
 
-키: **플러그인 설정에 넣어요.** SpriteCast를 켤 때 Claude Code가 물어봐요(나중에 바꾸려면 `/plugin` → SpriteCast → 설정). OpenAI
+**Claude Code에서는** 키를 플러그인 설정에 넣어요. SpriteCast를 켤 때 Claude Code가 물어봐요(나중에 바꾸려면 `/plugin` → SpriteCast → 설정). OpenAI
 키, 그리고 걷는 캐릭터를 만들면 Tripo 키요. 입력은 가려지고 시스템의 자격 증명 저장소에 보관되며, 세션이 시작될 때 SpriteCast
 스크립트에 전달돼요(바꾼 뒤엔 Claude Code를 다시 켜요). 설정에 키가 없으면 환경 변수의 키도 그대로 쓸 수 있어요:
 
@@ -673,6 +714,9 @@ OpenAI는 키로 이미지 모델을 쓰기 전에 조직 인증(platform.openai
 한 번 해 두세요. 키는 Claude Code를 켜기 전에 설정하세요(켜 둔 채 설정하면 다시 켜야 보여요). 걷는 캐릭터는 `TRIPO_API_KEY`도
 필요해요. Tripo API 플랫폼에서 받고, 거기서 API 크레딧을 사요(캐릭터 75, 동물 30).
 
+**Codex CLI에서는** 내장 `image_gen`을 쓰므로 OpenAI API 키가 필요 없어요. Tripo나 Meshy 모델링에는 각각 `TRIPO_API_KEY`나
+`MESHY_API_KEY`를 환경 변수로 설정하세요.
+
 </details>
 
 ## 작동 방식
@@ -681,7 +725,7 @@ OpenAI는 키로 이미지 모델을 쓰기 전에 조직 인증(platform.openai
 |---|---|---|
 | 사양 | Claude가 `<name>.json`을 써요: 바닥 크기, 미터 단위 블록, 완성품 설명 | 무료 |
 | `render` | 헤드리스 Chrome에서 three.js로 가이드, 그림자, 모델 입력을 만들어요 | 무료 |
-| `draw` | OpenAI 이미지(기본 `gpt-image-2.5-sunburst`)가 가이드를 내 그림체로 다시 그려요 | 약 $0.07 |
+| `draw` | OpenAI Images API(기본 `gpt-image-2.5-sunburst`)가 가이드를 내 그림체로 다시 그려요 | API 경로에서 약 $0.07 |
 | `finish` | 배경을 부드럽게 빼고, 가이드 영역에 맞추고, 그림자를 굽고, 앵커를 재요 | 무료 |
 | `preview` | 1m 격자 바닥 위에 놓아 봐요 | 무료 |
 
@@ -696,7 +740,7 @@ OpenAI는 키로 이미지 모델을 쓰기 전에 조직 인증(platform.openai
 | `No module named ...` | `python3 skills/spritecast/scripts/doctor.py`가 찍는 `PYTHON=`으로 스크립트를 돌려요(준비가 안 됐다고 나오면 먼저 `--fix`. Claude가 대신 해요) |
 | 브라우저 없음 | Chrome 설치, 또는 `doctor.py --fix --browser` (Playwright의 Chromium, ~150 MB) |
 | `this Python cannot make a venv` | Debian/Ubuntu: `sudo apt install python3-venv`, 또는 다른 Python(python.org, conda) |
-| `draw: set OPENAI_API_KEY` | 플러그인 설정(`/plugin` → SpriteCast)에 키를 넣거나 환경 변수로 설정하고(위) Claude Code를 다시 켜요 |
+| `draw: set OPENAI_API_KEY` | Claude/API 경로라면 플러그인 설정(`/plugin` → SpriteCast)이나 환경 변수에 키를 넣어요. Codex는 내장 `image_gen`을 써요 |
 | `HTTP 401` / `403` | 키가 틀렸거나, OpenAI가 이미지 모델을 쓰기 전에 조직 인증을 요구해요(platform.openai.com → Settings → Organization) |
 | `finish: WARNING - the drawing does not follow the guide` | 모델이 다른 각도나 모양으로 그렸어요. 이 카메라에서 보이는 모습을 설명에 적고, 가이드를 확인한 뒤 `--again`으로 다시 그려요. 식물처럼 가이드 밖으로 삐져나와도 되는 건 `"loose": true` |
 | 그림에 없던 게 추가됨 | 설명에 들어가면 안 되는 걸 적고("러그 없이, 로고 없이") 다시 그려요 |
@@ -765,10 +809,11 @@ OpenAI는 키로 이미지 모델을 쓰기 전에 조직 인증(platform.openai
 - 설정: `SPRITECAST_MODEL`(예: 새 모델을 써 보려면 `gpt-image-2.6-sunburst`. 기본값은 검사 기준을 맞춰 둔 모델이에요), `SPRITECAST_QUALITY` (`low` | `medium` | `high`).
 
 ## 자주 묻는 질문
-- **얼마 드나요?** 가이드, 마무리, `try`는 무료예요. 소품 약 $0.07, 방향을 하나 더할 때마다 $0.08, 걷는 캐릭터는 그리기 약
-  $2.2(`"mirror": true`면 약 $1.5)와 Tripo 75크레딧(동물 30)이에요. 돈이 드는 단계는 비용을 먼저 보여 주고 OK를 기다려요.
-  플러그인은 무료이고, OpenAI와 Tripo에 직접 내요. 만든 사람에게 가는 돈은 없어요.
-- **어떤 키가 필요하나요?** 그리려면 `OPENAI_API_KEY`, 걷는 캐릭터와 동물은 `TRIPO_API_KEY`(Meshy는 선택)예요. OpenAI가 먼저
+- **얼마 드나요?** OpenAI Images API 경로에서는 가이드, 마무리, `try`가 무료예요. 소품 그리기는 약 $0.07, 방향을 하나 더할 때마다
+  $0.08, 걷는 캐릭터는 그리기 약 $2.2(`"mirror": true`면 약 $1.5)와 Tripo 75크레딧(동물 30)이에요. 유료 단계는 비용을 먼저
+  보여 주고 OK를 기다려요. Codex는 내장 `image_gen`을 쓰므로 Images API 비용표가 적용되지 않아요. Tripo와 Meshy는 별도 서비스예요.
+- **어떤 키가 필요하나요?** Claude/API 경로로 그리려면 `OPENAI_API_KEY`, Codex는 내장 `image_gen`을 써서 이 키가 필요 없어요.
+  걷는 캐릭터와 동물은 `TRIPO_API_KEY`(Meshy는 선택)예요. OpenAI가 먼저
   조직 인증을 요구할 수 있어요. [키](#설치) 참고.
 - **AI 그림 아닌가요?** 맞아요. 그림은 이미지 모델이 그려요. SpriteCast가 더하는 건 형태예요: 크기, 카메라 각도, 걸음, 그림자가
   3D에서 나와요. 내 그림을 스타일로 줄 수도 있고, `"draw": false`로 걷는 캐릭터의 프레임을 이미지 모델 없이 3D 렌더로 쓸

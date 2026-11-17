@@ -1,7 +1,7 @@
 <h1 align="center"><img src="docs/banner.gif" alt="SpriteCast" width="100%"></h1>
 
 <p align="center"><b>One illustration in. A game character out.</b><br>
-An isometric sprite generator for Claude Code: 8-direction walks, actions and pixel art<br>
+An isometric sprite generator for Claude Code and Codex CLI: 8-direction walks, actions and pixel art<br>
 at your game's camera angle, with a 3D shadow under every frame - and the props to stand beside them.</p>
 
 <p align="center"><a href="https://github.com/Sunghwan0112/spritecast/stargazers"><img src="https://img.shields.io/github/stars/Sunghwan0112/spritecast?style=social" alt="GitHub stars"></a></p>
@@ -29,11 +29,31 @@ claude plugin marketplace add Sunghwan0112/spritecast
 claude plugin install spritecast@spritecast
 ```
 
-Then just ask: *"Here's my character (hero.png). Make her walk in 8 directions."*
-**To try it free, with no key**, ask Claude to *"try SpriteCast"*.
+**Codex CLI:** from this fork's local checkout, add its repo marketplace:
 
-An image model (OpenAI's, with your own key) does the drawing. The body, the motion, the angle and the shadow come from 3D - so
-every frame is the same person, and she actually walks.
+```bash
+cd /path/to/spritecast
+codex plugin marketplace add .
+codex plugin marketplace list
+```
+
+The marketplace command registers the local plugin catalog. In your Godot project's `.codex/config.toml`, enable the plugin with:
+
+```toml
+[plugins."spritecast@spritecast-marketplace"]
+enabled = true
+```
+
+Trust the game project and start a new Codex session. Once this fork is published, register it with `codex plugin marketplace add owner/repo`.
+The plugin uses Codex's built-in `image_gen` tool for SpriteCast drawings. It does not call the OpenAI Images API or need
+`OPENAI_API_KEY`; Tripo/Meshy still need their own credentials for 3D model generation.
+
+Then just ask: *"Here's my character (hero.png). Make her walk in 8 directions."*
+**To try it free, with no key**, ask Claude or Codex to *"try SpriteCast"*.
+
+An image model does the drawing. In Claude Code, SpriteCast can use the OpenAI Images API with your key; in Codex CLI, its plugin uses
+Codex's built-in `image_gen` tool. The body, the motion, the angle and the shadow come from 3D - so every frame is the same person,
+and she actually walks.
 
 | | you give | you get | you pay |
 |---|---|---|---|
@@ -45,7 +65,10 @@ every frame is the same person, and she actually walks.
 | **A prop, or a posed NPC** | a description | a sprite, its shadow, its anchor | about $0.07 (+ $0.08 a further facing) |
 | **A pixel-art prop** | a description | pixel sprites from every side, at the pixel character's scale | about 20 Tripo credits + $0.08 a side |
 
-Free and MIT. You pay OpenAI and Tripo directly; every paid step shows its cost and waits for your OK.
+The dollar figures above are for the OpenAI Images API route. The Codex plugin uses Codex's built-in `image_gen` tool instead and does not
+need `OPENAI_API_KEY`; Tripo/Meshy model and rig usage remains separate.
+
+Free and MIT. API-route estimates are above; Tripo/Meshy model operations use their separate credentials and should be confirmed before charges.
 
 ## What you can make
 
@@ -231,8 +254,7 @@ its frames.
   same light as the character; fast drops are drawn long along their way, and a few burst on the floor in a ring and a splash.
 - **Only the swing itself.** Nothing comes off while the umbrella is being raised: the fast stretch of the motion is found by itself.
 - **More frames than the body.** The body is drawn 8 times, but water has 24 effect frames (three to each) and fire 16 (two), played
-  faster over them - at 8 the sheet was whole in one frame and already drops in the next. They sit around each body frame
-  (a third of a frame before it, on it, a third after), so the water stays with the drawn umbrella instead of running ahead of it.
+  faster over them - at 8 the sheet was whole in one frame and already drops in the next.
 - **In pixel art too**, at the sprite's size: solid things keep hard edges, mist stays see-through.
 
 ![the same slash as 96-px pixel art, with water and with fire](docs/effects-pixel.gif)
@@ -253,8 +275,7 @@ the stance (3 frames from the rig), swings with the water effect, comes back up 
   out. `"slash:end"` starts from an attack's last pose instead of its first.
 - **Free to render, drawn like any action** - one sheet for three or four frames, about $0.08.
 - **Look at them joined**: `charpipe.py loop hero.json --only walk,ready,slash,recover --facing south-east` (free) makes a GIF like the
-  one above from the finished frames, so a frame that jumps is seen before anything is drawn again. A pixel set
-  can be fixed that way too, all the frames end to end in the editor: `pixeledit.py hero.json --join walk,ready,slash,recover --facing south-east`.
+  one above from the finished frames, so a frame that jumps is seen before anything is drawn again.
 - **One frame wrong? Draw it alone.** `charpipe.py frame hero.json --only slash --facing south-east --frame 5 --yes` (~$0.08) draws
   just that frame again; `"frame_words"` in the action tells the image model what that frame's render cannot. Frame 5 above had the
   left fist floating over the umbrella five times running; told the hand is mostly hidden behind her head, it came out right.
@@ -291,8 +312,6 @@ About $0.075 a sheet: a walk in all eight facings is 18 sheets (about $1.35); th
   the browser: magic-erase a patch of left-over white, pencil, change a colour, move a selection, copy a good face into the other
   frames. Add any colour to the palette; and the frames themselves can be copied (an in-between to draw on - 8 frames made 9),
   deleted and moved: the shadow and the game's data follow. The edits are kept and laid on again by every later build.
-  Animations played one after another can be opened as one, to play the whole loop and fix it where it jumps:
-  `pixeledit.py hero.json --join walk,ready,slash,recover --facing south-east`.
 
 ![the pixel editor: a frame on a grid, the frame before shown faint, the tools, and how much was done by AI and by hand](docs/pixel-edit.png)
 
@@ -305,13 +324,10 @@ How much is left to the hand: very little. For the 40 throw frames, about 6 minu
 hand work was the magic eraser - a click on each speck of left-over white, in 10 of the 40 frames (131 pixels, 0.15 % of the
 sprites). No face was touched: they are as the pipeline made them. The build prints those numbers every time.
 
-**A harder set, and what the hand did.** With something held - a weapon, an umbrella - its details need a little fixing by hand:
-a few pixels a frame, with an eraser and a pencil, no drawing skill. The same loop as the one under "Joining two animations", in pixel
-art: she walks with her umbrella, goes down into the stance, swings, comes back up and walks on - four animations joined, 23 frames.
-Only the umbrella was fixed by hand: its tip and edge made the same from frame to frame. The character was not; a few left-over white
-specks were erased, nothing more. In all 1,196 pixels of 51,442 (2.3 %), by someone who does not draw, in a few minutes. What made it quick, and what matters most in pixel art: looking at all 23 frames in a row, playing, not one at a time - a fix is
-making sure no part's pixels change a lot from one frame to the next. Not fixed: in two walk frames
-the umbrella is drawn a little off the 3D one's angle and length.
+**A harder set, and what the hand did.** Pixel art does need some fixing by hand - a few pixels a frame, the kind anyone can do
+with an eraser and a pencil, no drawing skill. The same loop as the one under "Joining two animations", in pixel art: she walks with her umbrella, goes down into the stance, swings, comes back up and walks on. That is four animations joined, 23 frames. Every frame was touched: 1,196 pixels of 51,442 (2.3 %), about 60
+minutes in the editor by someone who does not draw - left-over white, the umbrella's tip and edge made the same from frame to
+frame. Not fixed: in two walk frames the umbrella is drawn a little off the 3D one's angle and length.
 
 
 - **The editor shows where the 3D has things** (key `4`): the held thing in red and the body's outline in blue, over the frame you
@@ -399,7 +415,7 @@ the model's texture as it came (blurrier fur and folds).
 
 ![The rain girl seated in 8 facings, and in the example armchair under its front piece](docs/sitting.png)
 
-Once a character walks, ask Claude to *"make her sit"*. Her 3D model is bent into sitting (thighs level, knees bent, hands on the
+Once a character walks, ask *"make her sit"*. Her 3D model is bent into sitting (thighs level, knees bent, hands on the
 thighs) in 8 facings for free; you look at those renders, then they are drawn like the standing views (two sheets, about $0.22). She
 sits on nothing - your game's chair goes under her. `character.json` gets a `sit` block: for each facing the file, the **seat point**
 (put it on the chair's seat; a fraction of the frame, like `anchor`), the seat's height and the shadow. To put her on one of
@@ -416,6 +432,15 @@ The details: [reference/sitting.md](skills/spritecast/reference/sitting.md).
 $PYTHON skills/spritecast/scripts/charpipe.py sit <name>.json            # free: the seated renders
 $PYTHON skills/spritecast/scripts/charpipe.py sit <name>.json --draw     # ~$0.22: drawn and finished
 $PYTHON skills/spritecast/scripts/seat.py <prop>.json <name>.json --height 1.3   # free: on a prop, its front piece worked out
+```
+
+In Godot, do not put the entire chair above the character: that also covers the backrest and rear armrest. `seat_export.py` creates a
+layered `.tscn` with the shadow (z=-1), full chair (z=0), seated character (z=1), and the depth-derived foreground chair piece (z=2).
+The rear armrest stays behind while only the near armrest crosses the character. Place the scene root at the chair's footprint anchor so
+Godot can Y-sort the composite with the room.
+
+```bash
+$PYTHON skills/spritecast/scripts/seat_export.py <view>/seat/<name>-south-east/seat.json --out /path/to/game/assets/seats --project-root /path/to/game --name office_seat_se
 ```
 
 ## Fixing things by hand
@@ -623,21 +648,34 @@ The full format: [reference/character.md](skills/spritecast/reference/character.
 
 ## Install
 
-In a terminal:
+In Claude Code, use a terminal:
 ```
 claude plugin marketplace add Sunghwan0112/spritecast
 claude plugin install spritecast@spritecast
 ```
 or inside Claude Code: `/plugin marketplace add Sunghwan0112/spritecast`, then `/plugin install spritecast@spritecast`.
 
-**You also need** only Python 3.9+ and a browser (Chrome, or Edge - every Windows has it). The first time, Claude runs the setup
+**In Codex CLI**, from this fork's local repository root, register the marketplace:
+```bash
+cd /path/to/spritecast
+codex plugin marketplace add .
+codex plugin marketplace list
+```
+Then add this block to your Godot project's `.codex/config.toml` (merge it into the file if it already exists):
+```toml
+[plugins."spritecast@spritecast-marketplace"]
+enabled = true
+```
+Trust the game project and start a new Codex session. After the fork is published, register it with `codex plugin marketplace add owner/repo`.
+
+**You also need** only Python 3.9+ and a browser (Chrome, or Edge - every Windows has it). The first time, ask Claude or Codex to run the setup
 check (`doctor.py --fix`): it makes its own venv in `~/.cache/spritecast/` with the few packages (about 10 s), leaves your Python
 alone, and tells you what each thing is for. Nothing to install by hand.
 
 <details>
 <summary><b>Running the scripts yourself</b></summary>
 
-**Running the scripts yourself.** Claude runs them for you. To run them by hand from a clone of this repo, use the Python that
+**Running the scripts yourself.** Claude or Codex can run them for you. To run them by hand from a clone of this repo, use the Python that
 `doctor.py` prints on its last line (`PYTHON=...`); after `--fix` it is `~/.cache/spritecast/venv/bin/python` (Windows:
 `%USERPROFILE%\.cache\spritecast\venv\Scripts\python.exe`). A plain `python` may not have the packages (`No module named ...`). The commands below
 write it as `$PYTHON`:
@@ -662,16 +700,17 @@ There, run the `$PYTHON ...` commands below as `& $PYTHON ...`.
 | numpy, pillow, scipy | cutting out, fitting, shadows | yes (set up for you) |
 | playwright + Chrome or Edge | renders the 3D guide on your computer (free) | yes (set up for you; a browser you have is used) |
 | onnxruntime + a 224 MB model | characters only: the AI cut-out that keeps white shoes on white paper | characters (fetched once, by itself) |
-| `OPENAI_API_KEY` | drawing, about $0.07 a prop | to draw |
+| `OPENAI_API_KEY` | OpenAI Images API drawing, about $0.07 a prop | Claude/API route |
+| Codex built-in `image_gen` | drawing through Codex, no Images API key | Codex CLI |
 | `TRIPO_API_KEY` | characters: the 3D model, its rig and walk | for walking characters |
 
-**Try it first, free, no key:** ask Claude to *"try SpriteCast"*. It renders one of the examples' guides on your computer and
+**Try it first, free, no key:** ask Claude or Codex to *"try SpriteCast"*. It renders one of the examples' guides on your computer and
 finishes it with the drawing that came with the example (`isoprop.py try`), so you see the whole way before paying for anything.
 
 <details>
-<summary><b>Keys: where they go, and OpenAI's verification</b></summary>
+<summary><b>Claude Code keys and OpenAI verification</b></summary>
 
-Keys: **in the plugin's settings.** When you enable SpriteCast, Claude Code asks for them (`/plugin` → SpriteCast → configure,
+For **Claude Code**, keys go in the plugin's settings. When you enable SpriteCast, Claude Code asks for them (`/plugin` → SpriteCast → configure,
 to change them later): the OpenAI key, and the Tripo key if you make walking characters. They are kept in your system's credential
 store, masked, and handed to SpriteCast's scripts when a session starts (restart Claude Code after changing one). A key already in your
 environment still works when the settings have none:
@@ -690,6 +729,9 @@ Organization): do it once before your first drawing. Set the key before you star
 only after a restart. Walking characters also need `TRIPO_API_KEY`, from Tripo's API platform, where API credits are bought
 (75 a character, 30 an animal).
 
+For **Codex CLI**, the built-in `image_gen` drawing flow needs no OpenAI API key. Tripo or Meshy modeling still reads `TRIPO_API_KEY`
+or `MESHY_API_KEY` from the environment.
+
 </details>
 
 ## How it works
@@ -698,7 +740,7 @@ only after a restart. Walking characters also need `TRIPO_API_KEY`, from Tripo's
 |---|---|---|
 | spec | Claude writes `<name>.json`: footprint, blocks in metres, a description of the finished object | free |
 | `render` | three.js in headless Chrome: the guide, its shadow and the model's input | free |
-| `draw` | OpenAI Images (`gpt-image-2.5-sunburst` by default): the guide redrawn in your style | ~$0.07 |
+| `draw` | OpenAI Images API (`gpt-image-2.5-sunburst` by default): the guide redrawn in your style | ~$0.07 on the API route |
 | `finish` | magenta keyed out softly, fitted back onto the guide's box, shadow baked, anchor measured | free |
 | `preview` | the sprite on a 1 m floor grid | free |
 
@@ -715,7 +757,7 @@ until you add `--yes`. The spec format is in [reference/spec.md](skills/spriteca
 | `No module named ...` | run the script with the `PYTHON=` that `python3 skills/spritecast/scripts/doctor.py` prints (`--fix` first if it says not ready; Claude does this for you) |
 | no browser | install Chrome, or `doctor.py --fix --browser` (Playwright's Chromium, ~150 MB) |
 | `this Python cannot make a venv` | Debian/Ubuntu: `sudo apt install python3-venv`, or use another Python (python.org, conda) |
-| `draw: set OPENAI_API_KEY` | give the key in the plugin's settings (`/plugin` → SpriteCast), or set it in the environment (above), and restart Claude Code |
+| `draw: set OPENAI_API_KEY` | for the Claude/API route, give the key in the plugin settings (`/plugin` → SpriteCast) or set it in the environment (above); Codex uses built-in `image_gen` |
 | `HTTP 401` / `403` | the key is wrong, or OpenAI wants your organisation verified before it allows image models (platform.openai.com → Settings → Organization) |
 | `finish: WARNING - the drawing does not follow the guide` | the model drew another angle or shape: make the description say what is seen from this camera, check the guide, draw again with `--again`. For plants and other loose shapes that may spill past their guide, set `"loose": true` |
 | the drawing added things | say what must NOT be there in the description ("no rug, no logos"), then draw again |
@@ -785,10 +827,13 @@ Feedback decides what comes next, and what changed because of it is marked in th
 - Settings: `SPRITECAST_MODEL` (e.g. `gpt-image-2.6-sunburst` to try the newer model; the default is what the checks were tuned on) and `SPRITECAST_QUALITY` (`low` | `medium` | `high`).
 
 ## FAQ
-- **What does it cost?** The guides, finishing and the `try` are free. About $0.07 a prop, $0.08 for each further facing; a walking
+- **What does it cost?** On the OpenAI Images API route, guides, finishing and the `try` are free. Drawing is about $0.07 a prop and $0.08
+  for each further facing; a walking
   character about $2.2 of drawing (~$1.5 with `"mirror": true`) and 75 Tripo credits (an animal 30). Each paid step shows its cost
-  and waits for your OK. The plugin is free; you pay OpenAI and Tripo directly, nothing goes to the author.
-- **Which keys do I need?** `OPENAI_API_KEY` to draw, `TRIPO_API_KEY` for walking characters and animals (Meshy optional). OpenAI may
+  and waits for your OK. Codex uses native `image_gen`, so the Images API estimates do not apply to that route. The plugin is MIT licensed;
+  Tripo and Meshy are separate services.
+- **Which keys do I need?** Claude/API drawing uses `OPENAI_API_KEY`; Codex uses native `image_gen` without that key. `TRIPO_API_KEY` is for
+  walking characters and animals (Meshy optional). OpenAI may
   ask you to verify your organisation first. See [Keys](#install).
 - **Isn't this AI art?** Yes: an image model does the painting. What SpriteCast adds is the geometry: the size, the camera angle, the
   walk and the shadows come from 3D. You can give your own art as the style, or set `"draw": false` so no image model draws a walking

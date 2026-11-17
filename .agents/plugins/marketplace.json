@@ -1,0 +1,20 @@
+{
+  "name": "spritecast-marketplace",
+  "interface": {
+    "displayName": "SpriteCast"
+  },
+  "plugins": [
+    {
+      "name": "spritecast",
+      "source": {
+        "source": "local",
+        "path": "./plugins/spritecast"
+      },
+      "policy": {
+        "installation": "INSTALLED_BY_DEFAULT",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
